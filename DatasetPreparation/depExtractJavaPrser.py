@@ -71,7 +71,8 @@ def build_fqn_map(root):
         cu = StaticJavaParser.parse(JString(open(p, 'r').read()))
         pkg = cu.getPackageDeclaration().map(lambda d: d.getNameAsString()).orElse("")
         for t in cu.getTypes():
-            name = t.getNameAsString()
+            raw = t.getNameAsString()
+            name = str(raw)
             key = f"{pkg}.{name}" if pkg else name
             fqn_map[key] = p
     return fqn_map
