@@ -18,15 +18,7 @@ from com.github.javaparser.ast.expr import (
 from com.github.javaparser.ast.type import ReferenceType
 
 # 3️⃣ Utility: find all .java files
-
 def find_java_files(root):
-    """
-    Recursively discover all module roots (folders with pom.xml or build.gradle),
-    then collect .java files under each module's src/main/java and src/test/java.
-    If no modules are found, do a full recursive scan under `root`.
-    Yields each path exactly once, sorted.
-    """
-    # 1) find all module roots
     module_roots = []
     for dirpath, dirnames, filenames in os.walk(root):
         if 'pom.xml' in filenames or 'build.gradle' in filenames:
@@ -36,7 +28,6 @@ def find_java_files(root):
 
     if module_roots:
         for module in module_roots:
-            # scan standard java source dirs
             scanned = False
             for sub in ('src/main/java', 'src/test/java'):
                 base = os.path.join(module, sub)
@@ -46,16 +37,12 @@ def find_java_files(root):
                         for f in files:
                             if f.endswith('.java'):
                                 java_paths.add(os.path.join(dp, f))
-
-            # if this module had no src dirs, fall back to full scan
             if not scanned:
                 for dp, _, files in os.walk(module):
                     for f in files:
                         if f.endswith('.java'):
                             java_paths.add(os.path.join(dp, f))
-
     else:
-        # no modules: scan everything
         for dp, _, files in os.walk(root):
             for f in files:
                 if f.endswith('.java'):
@@ -79,12 +66,10 @@ def build_fqn_map(root):
 
 # 5️⃣ Extract imports and usage sets
 def extract_type_names(cu):
-    # fq imports, wildcard packages, simple type names
     fq_imports = set()
     wildcard_pkgs = set()
     simple_names = set()
 
-    # imports
     for imp in cu.getImports():
         raw = imp.getNameAsString()
         name = str(raw)
@@ -93,58 +78,53 @@ def extract_type_names(cu):
         else:
             fq_imports.add(name)
 
-    # inheritance & implements
     for cid in cu.findAll(ClassOrInterfaceDeclaration):
         for t in cid.getExtendedTypes():
             simple_names.add(t.getNameAsString())
         for t in cid.getImplementedTypes():
             simple_names.add(t.getNameAsString())
 
-    # annotations
     for ann in cu.findAll(AnnotationDeclaration):
         simple_names.add(ann.getNameAsString())
 
-    # fields and local vars
     for vd in cu.findAll(VariableDeclarationExpr):
         simple_names.add(vd.getElementType().asString())
 
-    # object creation
     for oc in cu.findAll(ObjectCreationExpr):
         simple_names.add(oc.getType().getNameAsString())
 
-    # instanceof
     for io in cu.findAll(InstanceOfExpr):
         simple_names.add(io.getType().asString())
 
-    # casts
     for c in cu.findAll(CastExpr):
         simple_names.add(c.getType().asString())
 
-    # class literals
     for cl in cu.findAll(ClassExpr):
         simple_names.add(cl.getType().asString())
 
-    # method references
     for mr in cu.findAll(MethodReferenceExpr):
         scope = mr.getScope()
         if scope.isTypeExpr():
             simple_names.add(scope.asTypeExpr().getType().asString())
 
-    # generics / reference types
     for rt in cu.findAll(ReferenceType):
         simple_names.add(rt.getElementType().asString())
 
-    # normalize to Python str
     fq_imports = {str(x) for x in fq_imports}
     wildcard_pkgs = {str(x) for x in wildcard_pkgs}
     simple_names = {str(x) for x in simple_names}
 
     return fq_imports, wildcard_pkgs, simple_names
 
-
+# 6️⃣ Build dependency graph
 def build_dependencies(root):
     fqn_map = build_fqn_map(root)
     deps = {}
+
+    def add_dep(deps_set, candidate_path, src_path):
+        if candidate_path != src_path:
+            deps_set.add(candidate_path)
+
     for src in find_java_files(root):
         cu = StaticJavaParser.parse(JString(open(src, 'r').read()))
         fq_imports, wildcard_pkgs, simple_names = extract_type_names(cu)
@@ -156,10 +136,10 @@ def build_dependencies(root):
         for fqn in fq_imports:
             simple = fqn.split('.')[-1]
             if simple in simple_names and fqn in fqn_map:
-                file_deps.add(fqn_map[fqn])
+                add_dep(file_deps, fqn_map[fqn], src)
                 covered_simple.add(simple)
 
-        # 2. Check wildcard imports FIRST before same-package
+        # 2. Wildcard imports
         wildcard_resolutions = set()
         for pkg in wildcard_pkgs:
             for name in simple_names:
@@ -169,33 +149,35 @@ def build_dependencies(root):
                 if candidate in fqn_map:
                     wildcard_resolutions.add((name, fqn_map[candidate]))
 
-        # Add wildcard resolutions and mark covered
         for name, path in wildcard_resolutions:
-            file_deps.add(path)
+            add_dep(file_deps, path, src)
             covered_simple.add(name)
 
-        # 3. Check same-package classes
+        # 3. Same-package classes
         for name in simple_names:
             if name in covered_simple:
                 continue
             same_pkg_candidate = f"{current_pkg}.{name}" if current_pkg else name
             if same_pkg_candidate in fqn_map:
-                file_deps.add(fqn_map[same_pkg_candidate])
+                add_dep(file_deps, fqn_map[same_pkg_candidate], src)
                 covered_simple.add(name)
 
-        # 4. Finally, handle remaining suffix matches
+        # 4. Fallback suffix match
         for name in simple_names:
             if name in covered_simple:
                 continue
             for fq, path in fqn_map.items():
-                if fq.endswith(f".{name}") and path not in file_deps:
-                    file_deps.add(path)
-                    break  # Only add first match
+                if fq.endswith(f".{name}") and path != src:
+                    add_dep(file_deps, path, src)
+                    break
 
         deps[src] = sorted(file_deps)
+
     return deps
+
 # 7️⃣ Main
 if __name__ == "__main__":
-    root =  "test\Instapay"
+    # root = "../Dataset/Admission-counselling-system"
+    root = "test\Instapay"
     graph = build_dependencies(root)
     print(json.dumps(graph, indent=2))
