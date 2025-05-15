@@ -4,7 +4,7 @@ import jpype, jpype.imports
 from jpype.types import JString
 
 # 1️⃣ Start the JVM with JavaParser on the classpath
-JAR = "DatasetPreparation/lib/javaparser-core-3.25.4.jar"
+JAR = "libs/javaparser-core-3.25.4.jar"
 if not jpype.isJVMStarted():
     jpype.startJVM(classpath=[JAR])
 
@@ -141,7 +141,7 @@ def extract_type_names(cu):
 
     return fq_imports, wildcard_pkgs, simple_names
 
-# 6️⃣ Build dependency graph
+
 def build_dependencies(root):
     fqn_map = build_fqn_map(root)
     deps = {}
@@ -149,38 +149,53 @@ def build_dependencies(root):
         cu = StaticJavaParser.parse(JString(open(src, 'r').read()))
         fq_imports, wildcard_pkgs, simple_names = extract_type_names(cu)
         file_deps = set()
+        covered_simple = set()
+        current_pkg = cu.getPackageDeclaration().map(lambda p: p.getNameAsString()).orElse("")
 
-        # direct FQ imports
+        # 1. Process FQ imports
         for fqn in fq_imports:
-            if fqn in fqn_map:
+            simple = fqn.split('.')[-1]
+            if simple in simple_names and fqn in fqn_map:
                 file_deps.add(fqn_map[fqn])
+                covered_simple.add(simple)
 
-        # simple names resolution
-        for name in simple_names:
-            # exact FQN (same-package inner classes)
-            if name in fqn_map:
-                file_deps.add(fqn_map[name])
-            # suffix match
-            for fq, path in fqn_map.items():
-                if fq.endswith("." + name):
-                    file_deps.add(path)
-            # wildcard pkg
-            for pkg in wildcard_pkgs:
+        # 2. Check wildcard imports FIRST before same-package
+        wildcard_resolutions = set()
+        for pkg in wildcard_pkgs:
+            for name in simple_names:
+                if name in covered_simple:
+                    continue
                 candidate = f"{pkg}.{name}"
                 if candidate in fqn_map:
-                    file_deps.add(fqn_map[candidate])
+                    wildcard_resolutions.add((name, fqn_map[candidate]))
+
+        # Add wildcard resolutions and mark covered
+        for name, path in wildcard_resolutions:
+            file_deps.add(path)
+            covered_simple.add(name)
+
+        # 3. Check same-package classes
+        for name in simple_names:
+            if name in covered_simple:
+                continue
+            same_pkg_candidate = f"{current_pkg}.{name}" if current_pkg else name
+            if same_pkg_candidate in fqn_map:
+                file_deps.add(fqn_map[same_pkg_candidate])
+                covered_simple.add(name)
+
+        # 4. Finally, handle remaining suffix matches
+        for name in simple_names:
+            if name in covered_simple:
+                continue
+            for fq, path in fqn_map.items():
+                if fq.endswith(f".{name}") and path not in file_deps:
+                    file_deps.add(path)
+                    break  # Only add first match
 
         deps[src] = sorted(file_deps)
     return deps
-
 # 7️⃣ Main
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: extractor.py /path/to/java/project", file=sys.stderr)
-        sys.exit(1)
-    root = sys.argv[1]
-    if not os.path.isdir(root):
-        print(f"Not a directory: {root}", file=sys.stderr)
-        sys.exit(1)
+    root =  "test\Instapay"
     graph = build_dependencies(root)
     print(json.dumps(graph, indent=2))
