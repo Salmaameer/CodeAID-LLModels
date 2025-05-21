@@ -67,7 +67,7 @@ def parse_json(text):
         return None
     
 def send_prompt(message):
-    client = OpenAI(api_key="sk-5eb72c36a20f4827a4962a08f6a147c8", base_url="https://api.deepseek.com")
+    client = OpenAI(api_key="", base_url="https://api.deepseek.com")
 
     try:
         response = client.chat.completions.create(
@@ -81,7 +81,6 @@ def send_prompt(message):
         if parsed_response is not None:
             print("Cache Hits:", response.usage.prompt_cache_hit_tokens,
                 "Misses:", response.usage.prompt_cache_miss_tokens)
-            #cleaned_content = content.replace('```json', '').replace('```', '').strip()
             return parsed_response
         else:
             print("Failed to parse response as JSON")
@@ -219,15 +218,21 @@ def detect_coupling(input_path, output_path):
 
             response = send_prompt(coupling_smells_detection_messages)
             print(response)
+            if not response:
+                smells = []
+            else:
+                smells = response.get("couplingSmells", [])
+
             result = {
                 "project_id": data["project_id"],
                 "chunk_id": data["chunk_id"],
                 "prompt": data["content"],
                 "task": "Coupling Smells Detection",
-                "output_schema": json.dumps(CouplingDetectionOutput.model_json_schema(), ensure_ascii=False ),
-                "couplingSmells": json.loads(response)["couplingSmells"]
+                "output_schema": json.dumps(CouplingDetectionOutput.model_json_schema(), 
+                                            ensure_ascii=False ),
+                "couplingSmells": smells
             }
             f_out.write(json.dumps(result) + "\n")
 
-detect_solid_violations("small.jsonl", "solid_output.jsonl")
-#detect_coupling("small.jsonl", "coupling_output.jsonl")
+#detect_solid_violations("small.jsonl", "solid_output.jsonl")
+detect_coupling("small.jsonl", "coupling_output.jsonl")
