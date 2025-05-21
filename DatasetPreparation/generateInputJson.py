@@ -9,10 +9,10 @@ from jpype.types import JString
 from jpype.imports import registerDomain
 
 # ========== CONFIG ==========
-CLEANED_DIR = "../Dataset"
-METADATA_FILE = "JSON Files/datasetMetadata.json"
+CLEANED_DIR = "/Users/salmaameer/GradProject/dataSets/DataSet"
+METADATA_FILE = "/Users/salmaameer/GradProject/dataSets/datasetMetadata.json"
 DEPENDENCY_CACHE_FILE = "dependencies.json"
-JAR = "libs/javaparser-core-3.26.4.jar"
+JAR = "lib/javaparser-core-3.25.4.jar"
 TOKENIZER = tiktoken.get_encoding("cl100k_base")
 # ============================
 
@@ -237,7 +237,7 @@ def process_projects(metadata):
     medium_file = open("medium.jsonl", "a", encoding="utf-8")
     large_file = open("large.jsonl", "a", encoding="utf-8")
 
-    project_id = 0
+    project_id = 133
     for project_info in metadata:
         project_name = project_info["project_id"]
         size_class = project_info["project_size"]
