@@ -147,25 +147,22 @@ def detect_solid_violations(input_path, output_path):
             ]
 
             response = send_prompt(solid_violations_detection_messages)
-            
             print(response)
-            if response:
-                try:
-                    result = {
-                        "project_id": data["project_id"],
-                        "chunk_id": data["chunk_id"],
-                        "prompt": data["content"],
-                        "task": "SOLID Violations Detection",
-                        "output_schema": json.dumps(SolidDetectionOutput.model_json_schema(), ensure_ascii=False),
-                        "violations": json.loads(response).get("violations", [])  # Added .get() for safety
-                    }
-                except json.JSONDecodeError:
-                    print("Failed to parse API response as JSON")
-                    result = {**data, "violations": [], "error": "Invalid JSON response"}
+            if not response:
+                violations = []
             else:
-                result = {**data, "violations": [], "error": "API request failed"}
-            
+                violations = response.get("violations", [])
+
+            result = {
+               "project_id": data["project_id"],
+                "chunk_id": data["chunk_id"],
+                "prompt": data["content"],
+                "task": "SOLID Violations Detection",
+                "output_schema": json.dumps(SolidDetectionOutput.model_json_schema(), ensure_ascii=False),
+                "violations": violations  # Added .get() for safety
+            }
             f_out.write(json.dumps(result) + "\n")
+
             
 
 def detect_coupling(input_path, output_path):
@@ -235,4 +232,4 @@ def detect_coupling(input_path, output_path):
             f_out.write(json.dumps(result) + "\n")
 
 #detect_solid_violations("small.jsonl", "solid_output.jsonl")
-detect_coupling("small.jsonl", "coupling_output.jsonl")
+#detect_coupling("small.jsonl", "coupling_output.jsonl")
