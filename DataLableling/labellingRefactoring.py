@@ -80,8 +80,8 @@ def refactor_solid_violations(input_path, output_path, unparsed_path):
                     "role": "user",
                     "content": "\n".join([
                         "You are an expert Java developer specialized in applying Single Responsibility and Open-Closed principles through code refactoring.",
-                        "You will be given one main Java file, along with a structured JSON detailing the detected Single Responsibility, Open-Closed violations.",
-                        "Your task is to refactor the code to eliminate these violations while maintaining or improving overall code clarity and design.",
+                        "You will be given one main Java file, with some dependencies (maybe none) along with a structured JSON detailing the detected Single Responsibility, Open-Closed violations in the main file.",
+                        "Your task is to refactor the code to eliminate these violations while maintaining and improving overall code clarity and design.",
                         "",
                         "For reference, here are brief descriptions of the SRP and OCP principles:",
                         "- SRP (Single Responsibility): A class should have only one reason to change, i.e., one responsibility.",
@@ -91,28 +91,19 @@ def refactor_solid_violations(input_path, output_path, unparsed_path):
                         "Then, reflect on the outcome: did you miss anything? Did your refactoring introduce new issues? If so, revise accordingly.",
                         "You should return the main file in case of being updated with its updated content.",
                         "You should return the created files with its content.",
-                        "Never add multiple classes/enums/interfaces in the same file, if needed create a new file for each",
-                        "Using the updated version of the main file along with the created files (if exist), update the dependency files (if exist) to match the new logic.",
+                        "Never add multiple classes/enums/interfaces in the same file; if needed, create a new file for each.",
                         "After refactoring the main file and adding any new files, you must:",
                         "- Review all dependency files for references to the main file’s class, methods, or fields.",
                         "- Update those dependency files to reflect any renames, deletions, or new methods introduced in your refactor.",
                         "- Ensure there are no invalid references in dependency files (such as calling a method that no longer exists).",
-                        "- If a dependency cannot be updated due to a missing or ambiguous context, leave a clear comment stating what should be addressed manually and add a break line after the comment(so subsequent code starts on a new line).",
                         "All updated dependency files should be included in your output alongside the main file and new files, following the Pydantic schema format.",
                         "Don't return a file unless it is updated or created.",
                         "",
                         "## Critical Output and Formatting Rules:",
-                        "1.  **Comment Formatting for Unfixable Dependencies:** This is a strict requirement. If a dependency cannot be updated due to missing context, you must leave a comment. IT IS CRITICAL that you add a line break (`\\n`) immediately after the comment. The code that follows the comment MUST start on a new line to prevent compilation errors.",
-                        "    - **CORRECT FORMAT:**",
-                        "      // TODO: Manual update needed because the 'oldMethod' was removed.",
-                        "      someObject.newMethod();",
-                        "",
-                        "- **INCORRECT FORMAT (This will break the code):**",
-                        "      // TODO: Manual update needed because the 'oldMethod' was removed. someObject.newMethod();",
-                        "",
-                        "2.  **No Extra Content:** Do not include any explanation, introduction, or conclusion outside the final JSON output.",
-                        "3.  **Code Formatting:** Return the code without extra spaces (without tabs). Ensure all necessary line breaks are present after all comments.",
-                        "4.  **JSON Structure:** You must follow the format defined in the Pydantic schema for the refactoring output.",
+                        "1. **Comment Formatting for Unfixable Dependencies:** This is a strict requirement. If a dependency cannot be updated due to missing context, you must leave a comment. IT IS CRITICAL that you add a line break (`\\n`) immediately after the comment. The code that follows the comment MUST start on a new line to avoid compilation errors.",
+                        "2. **No Extra Content:** Do not include any explanation, introduction, or conclusion outside the final JSON output.",
+                        "3. **Code Formatting:** Return the code in one line without extra spaces or break lines. Don't add any comments.",
+                        "4. **JSON Structure:** You must follow the format defined in the Pydantic schema for the refactoring output.",
                         "",
                         "Be precise, complete, and objective. If no changes are needed, reflect that in the response.",
                         "## Code:",
@@ -220,5 +211,5 @@ def refactor_coupling(input_path, output_path, unparsed_path):
 
 
 
-refactor_solid_violations("SORefData.jsonl", "o.jsonl", "rerun.jsonl")
+refactor_solid_violations("Mariam.jsonl", "o.jsonl", "rerun.jsonl")
 # refactor_solid_violations("", "", "rerun.jsonl")labellingRefactoringGemini.py
