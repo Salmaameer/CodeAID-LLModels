@@ -103,7 +103,7 @@ def refactor_solid_violations(input_path, output_path, unparsed_path):
                     "role": "user",
                     "content": "\n".join([
                         "You are an expert Java developer specialized in applying Single Responsibility and Open-Closed principles through code refactoring.",
-                        "You will be given one or more Java files, along with a structured JSON detailing the detected Single Responsibility, Open-Closed violations.",
+                        "You will be given one main Java file, along with a structured JSON detailing the detected Single Responsibility, Open-Closed violations.",
                         "Your task is to refactor the code to eliminate these violations while maintaining or improving overall code clarity and design.",
                         "",
                         "For reference, here are brief descriptions of the SRP and OCP principles:",
@@ -112,15 +112,18 @@ def refactor_solid_violations(input_path, output_path, unparsed_path):
                         "Apply a step-by-step reasoning process to identify the best approach for refactoring each violation.",
                         "After making initial changes, re-evaluate the result and improve it further if needed.",
                         "Then, reflect on the outcome: did you miss anything? Did your refactoring introduce new issues? If so, revise accordingly.",
-                        "You should return the files in case of being updated with its updated content",
-                        "You should return the created files with its content",
+                        "You should return the main file in case of being updated with its updated content.",
+                        "You should return the created files with its content.",
+                        "Never add multiple classes/enums/interfaces in the same file, if needed create a new file for each",
+                        "Using the updated version of the main file along with the created files (if exist), update the dependency files (if exist) to match the new logic.",
+                        "After refactoring the main file and adding any new files, you must:\n- Review all dependency files for references to the main file’s class, methods, or fields.\n- Update those dependency files to reflect any renames, deletions, or new methods introduced in your refactor.\n- Ensure there are no invalid references in dependency files (such as calling a method that no longer exists).\n- If a dependency cannot be updated due to a missing or ambiguous context, leave a clear comment stating what should be addressed manually.\n\nAll updated dependency files should be included in your output alongside the main file and new files, following the Pydantic schema format.",
                         "",
                         "Do not include any explanation outside the JSON.",
                         "You must follow the format defined in the Pydantic schema for refactoring output.",
-                        "Return the code in one line don't add end lines or spaces",
+                        "Return the code in one line don't add end lines or spaces.",
                         "",
                         "Be precise, complete, and objective. If no changes are needed, reflect that in the response.",
-                        "Do not generate any introduction or conclusion."
+                        "Do not generate any introduction or conclusion.",
                         "## Code:",
                         json.dumps(data["prompt"], ensure_ascii=False),
                         "",
@@ -153,6 +156,7 @@ def refactor_solid_violations(input_path, output_path, unparsed_path):
                                             ensure_ascii=False),
                 "refactored_files": refactored_files
             }
+            print(refactored_files)
             f_out.write(json.dumps(result) + "\n")
 
 
@@ -220,5 +224,5 @@ def refactor_coupling(input_path, output_path, unparsed_path):
 
 
 
-refactor_solid_violations("SODetectionResult.jsonl", "solidRefOutput.jsonl", "rerun.jsonl")
-# refactor_solid_violations("", "", "rerun.jsonl")
+refactor_solid_violations("SORefData.jsonl", "o.jsonl", "rerun.jsonl")
+# refactor_solid_violations("", "", "rerun.jsonl")labellingRefactoringGemini.py
