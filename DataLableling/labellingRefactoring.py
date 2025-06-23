@@ -123,10 +123,17 @@ def refactor_solid_violations(input_path, output_path, unparsed_path):
 
             response = send_prompt(solid_violations_refactoring_messages)
             print(response)
+
             if not response:
                 unparsed_f_out.write(line)
                 continue
-            refactored_files = response.get("refactored_files", [])
+
+            try:
+                refactored_files = response.get("refactored_files", [])
+            except Exception as e:
+                unparsed_f_out.write(line)
+                continue
+
             result = {
                 "project_id": data["project_id"],
                 "chunk_id": data["chunk_id"],
@@ -147,7 +154,7 @@ def refactor_solid_violations(input_path, output_path, unparsed_path):
                 unparsed_f_out.write(line)
 
 
-def refactor_coupling(input_path, output_path, unparsed_path):
+def refactor_coupling_smells(input_path, output_path, unparsed_path):
     with open(input_path, "r") as f_in, open(output_path, "a") as f_out, open(unparsed_path, "a") as unparsed_f_out:
         for line in f_in:
             data = json.loads(line)
@@ -194,7 +201,13 @@ def refactor_coupling(input_path, output_path, unparsed_path):
             if not response:
                 unparsed_f_out.write(line)
                 continue
-            refactored_files = response.get("refactored_files", [])
+
+            try:
+                refactored_files = response.get("refactored_files", [])
+            except Exception as e:
+                unparsed_f_out.write(line)
+                continue
+
             result = {
                 "project_id": data["project_id"],
                 "chunk_id": data["chunk_id"],
@@ -207,9 +220,17 @@ def refactor_coupling(input_path, output_path, unparsed_path):
                                             ensure_ascii=False),
                 "refactored_files": refactored_files
             }
-            f_out.write(json.dumps(result) + "\n")
+
+            if is_valid_obj(result) and is_valid_code(result):
+                f_out.write(json.dumps(result) + "\n")
+                print("ok")
+                print(response)
+            else:
+                unparsed_f_out.write(line)
+                print("not ok")
+                print(response)
 
 
 
-refactor_solid_violations("Mariam.jsonl", "o.jsonl", "rerun.jsonl")
-# refactor_solid_violations("", "", "rerun.jsonl")labellingRefactoringGemini.py
+# refactor_solid_violations("Mariam.jsonl", "o.jsonl", "rerun.jsonl")
+refactor_coupling_smells("Mariam.jsonl", "MariamOut.jsonl", "rerun.jsonl")
