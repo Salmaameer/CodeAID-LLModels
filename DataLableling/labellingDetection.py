@@ -24,7 +24,7 @@ import os
 
 
 Principle = Literal[
-    "Single Responsibility", "", "Liskov",
+    "Single Responsibility", "Open-Closed", "Liskov",
     "Interface Segregation", "Dependency Inversion"
 ]
 
